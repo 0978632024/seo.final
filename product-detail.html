@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>商品詳情 | AeroStep 鞋履設計專賣店</title>
+  <meta name="description" content="檢視商品詳細規格、特殊避震科技與材質設計，為您的雙腳選擇最合適的高品質鞋款。">
+  <link rel="stylesheet" href="assets/css/style.css">
+  <style>
+    /* Additional custom styling for detail page interactive elements */
+    .detail-qty-box {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+      margin-bottom: 24px;
+    }
+    .qty-title {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: var(--dark);
+    }
+    .qty-selector-group {
+      display: flex;
+      align-items: center;
+      border: 1px solid var(--gray-200);
+      border-radius: var(--radius-sm);
+      overflow: hidden;
+      width: 120px;
+    }
+    .qty-btn {
+      width: 35px;
+      height: 35px;
+      background-color: var(--light);
+      font-size: 1.2rem;
+      font-weight: bold;
+      color: var(--gray-600);
+    }
+    .qty-btn:hover {
+      background-color: var(--gray-200);
+    }
+    .qty-input {
+      width: 50px;
+      height: 35px;
+      text-align: center;
+      font-weight: 700;
+      border-left: 1px solid var(--gray-200);
+      border-right: 1px solid var(--gray-200);
+      background-color: var(--white);
+    }
+    .features-list {
+      margin-top: 20px;
+      padding-left: 20px;
+      list-style-type: disc;
+      color: var(--gray-600);
+    }
+    .features-list li {
+      margin-bottom: 8px;
+    }
+    .back-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 24px;
+      color: var(--gray-600);
+      font-weight: 600;
+    }
+    .back-btn:hover {
+      color: var(--primary);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Shared Header Container -->
+  <div id="shared-header"></div>
+
+  <!-- Shared Cart Drawer Container -->
+  <div id="shared-cart-drawer"></div>
+
+  <!-- Detail Page Content Section -->
+  <section class="section-padding" style="background-color: var(--light);">
+    <div class="container">
+      
+      <!-- Back navigation button -->
+      <a href="javascript:history.back();" class="back-btn">
+        ← 返回前頁
+      </a>
+
+      <!-- Main product details panel -->
+      <div id="product-detail-panel">
+        <!-- Rendered dynamically via JavaScript -->
+        <div class="text-center" style="padding: 100px 0;">
+          <div style="font-size: 2.5rem; animation: spin 1s linear infinite; display: inline-block;">🔄</div>
+          <p style="margin-top: 15px; color: var(--gray-400);">正在載入商品詳情...</p>
+        </div>
+      </div>
+
+      <!-- Related Products Section -->
+      <div style="margin-top: 80px;">
+        <h2 class="section-title" style="font-size: 1.8rem; margin-bottom: 8px;">您可能會喜歡的商品</h2>
+        <p class="section-subtitle" style="margin-bottom: 40px;">為您精選其他熱銷與風格相近的品項</p>
+        <div class="products-grid" id="related-products-container">
+          <!-- Rendered dynamically -->
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- Shared Footer Container -->
+  <div id="shared-footer"></div>
+
+  <!-- Scripts -->
+  <script src="assets/js/products.js"></script>
+  <script src="assets/js/main.js"></script>
+  <script>
+    let currentQty = 1;
+    let selectedSize = '';
+    let selectedColor = '';
+
+    document.addEventListener('DOMContentLoaded', () => {
+      // 1. Parse URL Parameter for Product ID
+      const params = new URLSearchParams(window.location.search);
+      const productId = parseInt(params.get('id'));
+
+      if (isNaN(productId) || !window.products) {
+        renderProductNotFound();
+        return;
+      }
+
+      // 2. Fetch Product Info
+      const product = window.products.find(p => p.id === productId);
+      if (!product) {
+        renderProductNotFound();
+        return;
+      }
+
+      // Set initial selection values
+      if (product.sizes && product.sizes.length > 0) {
+        selectedSize = product.sizes[0];
+      }
+      if (product.colors && product.colors.length > 0) {
+        selectedColor = product.colors[0].name;
+      }
+
+      // Update Page Title
+      document.title = `${product.name} | AeroStep 鞋履設計專賣店`;
+
+      // 3. Render Product Info
+      renderProductDetails(product);
+
+      // 4. Render Related Products
+      renderRelatedProducts(product);
+    });
+
+    // Helper: Adjust Quantity on Detail Page
+    window.changeDetailQty = (delta) => {
+      const input = document.getElementById('detail-qty-input');
+      if (!input) return;
+      let val = parseInt(input.value) + delta;
+      if (val < 1) val = 1;
+      currentQty = val;
+      input.value = val;
+    };
+
+    // Helper: Select Size on Detail Page
+    window.selectSize = (btn, size) => {
+      selectedSize = size;
+      const sizeBtns = document.querySelectorAll('.size-btn');
+      sizeBtns.forEach(b => b.classList.remove('selected'));
+      btn.classList.add('selected');
+    };
+
+    // Helper: Select Color on Detail Page
+    window.selectColor = (btn, colorName) => {
+      selectedColor = colorName;
+      const colorBtns = document.querySelectorAll('.color-btn');
+      colorBtns.forEach(b => b.classList.remove('selected'));
+      btn.classList.add('selected');
+    };
+
+    // Helper: Trigger Cart Addition from Detail Page
+    window.addCurrentToCart = (productId) => {
+      addToCart(productId, currentQty, selectedSize, selectedColor);
+    };
+
+    // Render Function: Details View
+    function renderProductDetails(product) {
+      const panel = document.getElementById('product-detail-panel');
+      if (!panel) return;
+
+      // Generate Size Buttons HTML
+      let sizeHtml = '';
+      if (product.sizes && product.sizes.length > 0) {
+        sizeHtml = `
+          <div class="option-group">
+            <div class="option-group-title">選擇尺寸</div>
+            <div class="size-selector">
+              ${product.sizes.map((s, idx) => `
+                <button class="size-btn ${idx === 0 ? 'selected' : ''}" onclick="selectSize(this, '${s}')">
+                  ${s}
+                </button>
+              `).join('')}
+            </div>
+          </div>
+        `;
+      }
+
+      // Generate Color Buttons HTML
+      let colorHtml = '';
+      if (product.colors && product.colors.length > 0) {
+        colorHtml = `
+          <div class="option-group">
+            <div class="option-group-title">選擇顏色: <span id="color-name-display" style="font-weight:normal; color:var(--gray-600);">${selectedColor}</span></div>
+            <div class="color-selector">
+              ${product.colors.map((c, idx) => `
+                <button class="color-btn ${idx === 0 ? 'selected' : ''}" 
+                        style="border-color:${idx === 0 ? 'var(--primary)' : 'var(--gray-200)'};" 
+                        onclick="selectColor(this, '${c.name}'); document.getElementById('color-name-display').innerText='${c.name}';">
+                  <div class="color-inner" style="background-color: ${c.hex};"></div>
+                </button>
+              `).join('')}
+            </div>
+          </div>
+        `;
+      }
+
+      // Generate Features bullets
+      let featuresHtml = '';
+      if (product.features && product.features.length > 0) {
+        featuresHtml = `
+          <div style="margin-top: 24px; border-top: 1px solid var(--gray-200); padding-top: 20px;">
+            <div class="option-group-title">商品特色</div>
+            <ul class="features-list">
+              ${product.features.map(f => `<li>${f}</li>`).join('')}
+            </ul>
+          </div>
+        `;
+      }
+
+      panel.innerHTML = `
+        <div class="detail-container">
+          <!-- Left: Product Image Box -->
+          <div class="detail-img-box">
+            <img src="${product.image}" alt="${product.name}" id="detail-main-img">
+          </div>
+
+          <!-- Right: Product Information & Action Panel -->
+          <div class="detail-info">
+            <span class="product-category" style="font-size:0.9rem; margin-bottom:10px;">
+              ${getCategoryText(product.category)}
+            </span>
+            <h1 class="detail-title">${product.name}</h1>
+            
+            <div class="detail-meta">
+              <div class="product-rating">
+                ★ ${product.rating} <span>(${product.reviews} 則評價)</span>
+              </div>
+              <span class="badge" style="background-color: var(--secondary);">全新商品</span>
+            </div>
+
+            <div class="detail-price" style="margin-bottom: 20px;">
+              NT$ ${product.price.toLocaleString()}
+            </div>
+
+            <p class="detail-desc">${product.description}</p>
+
+            <div class="detail-options">
+              <!-- Render Color Selector -->
+              ${colorHtml}
+
+              <!-- Render Size Selector -->
+              ${sizeHtml}
+            </div>
+
+            <!-- Qty Selector and Checkout -->
+            <div class="detail-qty-box">
+              <span class="qty-title">選購數量</span>
+              <div class="qty-selector-group">
+                <button class="qty-btn" onclick="changeDetailQty(-1)">-</button>
+                <input type="text" class="qty-input" id="detail-qty-input" value="1" readonly>
+                <button class="qty-btn" onclick="changeDetailQty(1)">+</button>
+              </div>
+            </div>
+
+            <div style="display: flex; gap: 16px; margin-top: 10px;">
+              <button class="btn btn-primary" onclick="addCurrentToCart(${product.id})" style="flex-grow: 1; justify-content: center; height: 50px;">
+                加入購物車 🛒
+              </button>
+              <button class="btn btn-secondary" onclick="addToCartAndCheckout(${product.id})" style="height: 50px;">
+                立即購買
+              </button>
+            </div>
+
+            <!-- Features -->
+            ${featuresHtml}
+          </div>
+        </div>
+      `;
+    }
+
+    // Helper: Add and redirect to checkout
+    window.addToCartAndCheckout = (productId) => {
+      // Add to cart first
+      addToCart(productId, currentQty, selectedSize, selectedColor);
+      // Wait dynamic animation drawer and trigger checkout button
+      setTimeout(() => {
+        const checkoutBtn = document.getElementById('checkout-btn');
+        if (checkoutBtn) checkoutBtn.click();
+      }, 500);
+    };
+
+    // Render Function: Related Products recommendations
+    function renderRelatedProducts(currentProduct) {
+      const container = document.getElementById('related-products-container');
+      if (!container || !window.products) return;
+
+      // Filter products of same category, excluding current product
+      let related = window.products.filter(p => p.category === currentProduct.category && p.id !== currentProduct.id);
+      
+      // If not enough products, backfill with others
+      if (related.length < 4) {
+        const otherProducts = window.products.filter(p => p.id !== currentProduct.id && !related.includes(p));
+        related = [...related, ...otherProducts].slice(0, 4);
+      } else {
+        related = related.slice(0, 4);
+      }
+
+      let html = '';
+      related.forEach(product => {
+        html += `
+          <div class="product-card">
+            <a href="product-detail.html?id=${product.id}">
+              <div class="product-img-container">
+                <img src="${product.image}" alt="${product.name}">
+              </div>
+            </a>
+            <div class="product-details">
+              <span class="product-category">${getCategoryText(product.category)}</span>
+              <a href="product-detail.html?id=${product.id}">
+                <h3 class="product-name">${product.name}</h3>
+              </a>
+              <div class="product-rating">
+                ★ ${product.rating} <span>(${product.reviews} 評價)</span>
+              </div>
+              <div class="product-footer">
+                <span class="product-price">NT$ ${product.price.toLocaleString()}</span>
+                <button class="add-cart-btn flex-center" onclick="addToCart(${product.id}, 1)" aria-label="Add ${product.name} to Cart">
+                  🛒
+                </button>
+              </div>
+            </div>
+          </div>
+        `;
+      });
+      container.innerHTML = html;
+    }
+
+    // Render Function: 404
+    function renderProductNotFound() {
+      const panel = document.getElementById('product-detail-panel');
+      if (!panel) return;
+      panel.innerHTML = `
+        <div class="text-center" style="padding: 100px 20px; background-color: var(--white); border-radius: var(--radius-lg); border:1px solid var(--gray-200);">
+          <div style="font-size: 5rem; margin-bottom: 20px;">🚫</div>
+          <h2>找不到此商品</h2>
+          <p style="color: var(--gray-600); margin: 15px 0 30px;">抱歉，此商品可能已下架或網址不正確。</p>
+          <a href="index.html" class="btn btn-primary">回首頁逛逛</a>
+        </div>
+      `;
+    }
+
+    // Helper: Translate category slug
+    function getCategoryText(cat) {
+      switch (cat) {
+        case 'men': return '男鞋款式';
+        case 'women': return '女鞋款式';
+        case 'kids': return '兒童鞋款';
+        case 'accessories': return '機能配件';
+        case 'others': return '保養與其它';
+        default: return '商品款式';
+      }
+    }
+  </script>
+</body>
+</html>

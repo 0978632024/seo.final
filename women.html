@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>女生鞋子 | AeroStep 鞋履設計專賣店</title>
+  <meta name="description" content="瀏覽 AeroStep 專為女性打造的時尚避震鞋款。包含室內健身房跑鞋、白金增高厚底板鞋、頂級絲絨赫本風高跟鞋與戶外越野健行鞋。">
+  <link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+
+  <!-- Shared Header Container -->
+  <div id="shared-header"></div>
+
+  <!-- Shared Cart Drawer Container -->
+  <div id="shared-cart-drawer"></div>
+
+  <!-- Category Banner -->
+  <section class="about-hero" style="padding: 60px 0; background: linear-gradient(135deg, #be185d 0%, #831843 100%);">
+    <div class="container">
+      <h1>女生系列鞋款</h1>
+      <p>極致溫柔配色、完美腿型增高修飾與全天候舒適緩震，活出優雅生活</p>
+    </div>
+  </section>
+
+  <!-- Products Section with Sidebar Filters -->
+  <section class="section-padding">
+    <div class="container">
+      <div class="products-layout">
+        <!-- Sidebar Filters -->
+        <aside class="filter-sidebar">
+          <!-- Search -->
+          <div class="filter-section">
+            <h3 class="filter-title">關鍵字搜尋</h3>
+            <input type="text" id="search-input" placeholder="搜尋商品名稱..." style="width:100%; padding:10px; border:1px solid var(--gray-200); border-radius:var(--radius-sm); font-size:0.9rem;">
+          </div>
+
+          <!-- Price Range -->
+          <div class="filter-section">
+            <h3 class="filter-title">價格區間 (NT$)</h3>
+            <div class="filter-price-inputs">
+              <input type="number" id="price-min" placeholder="最低" min="0">
+              <span>-</span>
+              <input type="number" id="price-max" placeholder="最高" min="0">
+            </div>
+          </div>
+
+          <!-- Sorting -->
+          <div class="filter-section">
+            <h3 class="filter-title">商品排序</h3>
+            <select id="sort-select" style="width:100%; padding:10px; border:1px solid var(--gray-200); border-radius:var(--radius-sm); font-size:0.9rem; background-color:var(--white); cursor:pointer;">
+              <option value="default">預設排序</option>
+              <option value="price-asc">價格：由低到高</option>
+              <option value="price-desc">價格：由高到低</option>
+              <option value="rating-desc">評價：由高到低</option>
+            </select>
+          </div>
+
+          <!-- Reset Button -->
+          <button class="btn btn-secondary" id="reset-filters-btn" style="width: 100%; justify-content: center; padding: 10px;">清除所有篩選</button>
+        </aside>
+
+        <!-- Product Grid -->
+        <main>
+          <div class="products-grid" id="category-products-container">
+            <!-- Dynamic Category Products -->
+          </div>
+          <div id="no-products-message" class="text-center" style="display:none; padding: 80px 0; color: var(--gray-400);">
+            <div style="font-size: 3rem; margin-bottom: 16px;">🔍</div>
+            <p>沒有找到符合條件的商品，請重新調整篩選條件。</p>
+          </div>
+        </main>
+      </div>
+    </div>
+  </section>
+
+  <!-- Shared Footer Container -->
+  <div id="shared-footer"></div>
+
+  <!-- Scripts -->
+  <script src="assets/js/products.js"></script>
+  <script src="assets/js/main.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      // Current category
+      const CATEGORY = 'women';
+      
+      // Highlight category in navigation
+      setTimeout(() => {
+        highlightCategoryMenu(CATEGORY);
+      }, 100);
+
+      // DOM Elements
+      const container = document.getElementById('category-products-container');
+      const noProdMsg = document.getElementById('no-products-message');
+      const searchInput = document.getElementById('search-input');
+      const priceMinInput = document.getElementById('price-min');
+      const priceMaxInput = document.getElementById('price-max');
+      const sortSelect = document.getElementById('sort-select');
+      const resetBtn = document.getElementById('reset-filters-btn');
+
+      // Get category products
+      const originalList = window.products ? window.products.filter(p => p.category === CATEGORY) : [];
+
+      // Render function
+      function render(list) {
+        if (list.length === 0) {
+          container.innerHTML = '';
+          noProdMsg.style.display = 'block';
+          return;
+        }
+
+        noProdMsg.style.display = 'none';
+        let html = '';
+        list.forEach(product => {
+          html += `
+            <div class="product-card">
+              <a href="product-detail.html?id=${product.id}">
+                <div class="product-img-container">
+                  <img src="${product.image}" alt="${product.name}">
+                </div>
+              </a>
+              <div class="product-details">
+                <span class="product-category">${product.category === 'women' ? '女鞋款式' : ''}</span>
+                <a href="product-detail.html?id=${product.id}">
+                  <h3 class="product-name">${product.name}</h3>
+                </a>
+                <div class="product-rating">
+                  ★ ${product.rating} <span>(${product.reviews} 評價)</span>
+                </div>
+                <div class="product-footer">
+                  <span class="product-price">NT$ ${product.price.toLocaleString()}</span>
+                  <button class="add-cart-btn flex-center" onclick="addToCart(${product.id}, 1)" aria-label="Add ${product.name} to Cart">
+                    🛒
+                  </button>
+                </div>
+              </div>
+            </div>
+          `;
+        });
+        container.innerHTML = html;
+      }
+
+      // Filter and Sort function
+      function filterAndSort() {
+        let filtered = [...originalList];
+
+        // Search filter
+        const query = searchInput.value.trim().toLowerCase();
+        if (query) {
+          filtered = filtered.filter(p => p.name.toLowerCase().includes(query) || p.description.toLowerCase().includes(query));
+        }
+
+        // Price filter
+        const minVal = parseFloat(priceMinInput.value);
+        const maxVal = parseFloat(priceMaxInput.value);
+        if (!isNaN(minVal)) {
+          filtered = filtered.filter(p => p.price >= minVal);
+        }
+        if (!isNaN(maxVal)) {
+          filtered = filtered.filter(p => p.price <= maxVal);
+        }
+
+        // Sorting
+        const sortBy = sortSelect.value;
+        if (sortBy === 'price-asc') {
+          filtered.sort((a, b) => a.price - b.price);
+        } else if (sortBy === 'price-desc') {
+          filtered.sort((a, b) => b.price - a.price);
+        } else if (sortBy === 'rating-desc') {
+          filtered.sort((a, b) => b.rating - a.rating);
+        }
+
+        render(filtered);
+      }
+
+      // Event Listeners
+      searchInput.addEventListener('input', filterAndSort);
+      priceMinInput.addEventListener('input', filterAndSort);
+      priceMaxInput.addEventListener('input', filterAndSort);
+      sortSelect.addEventListener('change', filterAndSort);
+
+      resetBtn.addEventListener('click', () => {
+        searchInput.value = '';
+        priceMinInput.value = '';
+        priceMaxInput.value = '';
+        sortSelect.value = 'default';
+        render(originalList);
+      });
+
+      // Initial Render
+      render(originalList);
+    });
+  </script>
+</body>
+</html>
